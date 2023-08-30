@@ -1,1 +1,1 @@
-nvidia=grid-create-gpu-node
+nvidia = grid - create - gpu - node

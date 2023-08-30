@@ -24,7 +24,7 @@ def process_build(build, job_dir, job_to_retry, error_list, retry_object, retry_
     else:
         # Mark as retried
         actions.mark_build_as_retried(job_dir, job_to_retry, build)
-        print("[" + job_to_retry + "] ... #" + str(build)+ " OK")
+        print("[" + job_to_retry + "] ... #" + str(build) + " OK")
 
 
 def check_and_trigger_action(
@@ -76,8 +76,10 @@ def check_and_trigger_action(
                     )
                 else:
                     # Take action on the nodes
-                    node_name = helpers.grep(envvars_file_path, "NODE_NAME=", True) or ""
-                    node_name = (node_name.split("=")[1].replace("\n", ""))
+                    node_name = (
+                        helpers.grep(envvars_file_path, "NODE_NAME=", True) or ""
+                    )
+                    node_name = node_name.split("=")[1].replace("\n", "")
                     job_url = (
                         os.environ.get("JENKINS_URL")
                         + "job/"
@@ -172,7 +174,11 @@ def check_and_trigger_action(
 
         build_file_path = os.path.join(build_dir_path, "build.xml")
         display_name = helpers.grep(build_file_path, "<displayName>", True) or ""
-        display_name = display_name.replace("<displayName>", "").replace("</displayName>", "").replace("\n", "")
+        display_name = (
+            display_name.replace("<displayName>", "")
+            .replace("</displayName>", "")
+            .replace("\n", "")
+        )
         actions.notify_noaction(display_name, job_to_retry, build_to_retry, job_url)
 
 
@@ -216,11 +222,17 @@ def check_running_time(job_dir, build_to_retry, job_to_retry, max_running_time=1
         return
 
     start_timestamp = helpers.grep(build_file_path, "<startTime>", True) or ""
-    start_timestamp = start_timestamp.replace("<startTime>", "").replace("</startTime>", "")
+    start_timestamp = start_timestamp.replace("<startTime>", "").replace(
+        "</startTime>", ""
+    )
 
     display_name = helpers.grep(build_file_path, "<displayName>", True) or ""
-    display_name = display_name.replace("<displayName>", "").replace("</displayName>", "").replace("\n", "")
-  
+    display_name = (
+        display_name.replace("<displayName>", "")
+        .replace("</displayName>", "")
+        .replace("\n", "")
+    )
+
     start_datetime = datetime.datetime.fromtimestamp(int(start_timestamp) / 1000)
     now = datetime.datetime.now()
     duration = now - start_datetime
@@ -243,7 +255,12 @@ def check_running_time(job_dir, build_to_retry, job_to_retry, max_running_time=1
 
         # Mark as notified
         actions.notify_pendingbuild(
-            display_name, build_to_retry, job_to_retry, duration, job_url, parser_url,
+            display_name,
+            build_to_retry,
+            job_to_retry,
+            duration,
+            job_url,
+            parser_url,
         )
 
     else:
@@ -293,14 +310,16 @@ if __name__ == "__main__":
 
     # Get parser-info from previous run
     try:
-        with open(parser_info_path, "r") as processed_file:  # Get last parsed object just once
+        with open(
+            parser_info_path, "r"
+        ) as processed_file:  # Get last parsed object just once
             processed_object = json.load(processed_file)
     except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
-         print(f"Error occurred: {str(e)}")
-         print("Restoring parser-info.json file...")
-         with open(parser_info_path, "w") as json_file:
-             processed_object = {"parserInfo":{"lastRevision":{},"runningBuilds":{}}}
-             json.dump(processed_object, json_file, indent=2)
+        print(f"Error occurred: {str(e)}")
+        print("Restoring parser-info.json file...")
+        with open(parser_info_path, "w") as json_file:
+            processed_object = {"parserInfo": {"lastRevision": {}, "runningBuilds": {}}}
+            json.dump(processed_object, json_file, indent=2)
 
     # Get retry queue
     try:
@@ -308,12 +327,12 @@ if __name__ == "__main__":
             retry_object = json.load(retry_file)
             retry_entries = retry_object["retryQueue"]
     except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
-         print(f"Error occurred: {str(e)}")
-         print("Restoring retry_queue.json file...")
-         with open(retry_queue_path, "w") as json_file:
-             retry_object = {"retryQueue": {}}
-             json.dump(retry_object, json_file, indent=2)
-             retry_entries = retry_object["retryQueue"]
+        print(f"Error occurred: {str(e)}")
+        print("Restoring retry_queue.json file...")
+        with open(retry_queue_path, "w") as json_file:
+            retry_object = {"retryQueue": {}}
+            json.dump(retry_object, json_file, indent=2)
+            retry_entries = retry_object["retryQueue"]
 
     T = 1
     time_check = True
@@ -381,11 +400,15 @@ if __name__ == "__main__":
                         retry_object,
                         retry_delay,
                     )
-                         
+
                 # Update last processed log only if greater than current revision number
-                max_latest_revision = max([int(build_id) for build_id in missing_builds])
+                max_latest_revision = max(
+                    [int(build_id) for build_id in missing_builds]
+                )
                 if max_latest_revision > int(latest_revision):
-                    processed_object["parserInfo"]["lastRevision"][job_to_retry] = max_latest_revision
+                    processed_object["parserInfo"]["lastRevision"][
+                        job_to_retry
+                    ] = max_latest_revision
 
             # Update running builds checking > last revision number
             new_running_builds = helpers.get_running_builds(job_dir, latest_revision)
@@ -430,9 +453,13 @@ if __name__ == "__main__":
                         build
                     )
                 # Update last processed log only if greater than current revision number
-                max_latest_revision = max([int(build_id) for build_id in finished_builds])
+                max_latest_revision = max(
+                    [int(build_id) for build_id in finished_builds]
+                )
                 if max_latest_revision > int(latest_revision):
-                    processed_object["parserInfo"]["lastRevision"][job_to_retry] = max_latest_revision
+                    processed_object["parserInfo"]["lastRevision"][
+                        job_to_retry
+                    ] = max_latest_revision
 
             # Get updated value for total_running_builds
             total_running_builds = list(

@@ -14,7 +14,9 @@ with open(jobs_config_path, "r") as jobs_file:
     error_msg = jobs_object["jobsConfig"]["errorMsg"]
 
 
-print("[TEST 1]: Checking that all jobs defined in jobs-config.json exist in Jenkins ...")
+print(
+    "[TEST 1]: Checking that all jobs defined in jobs-config.json exist in Jenkins ..."
+)
 job_names = [jenkins_jobs[job_id]["jobName"] for job_id in range(len(jenkins_jobs))]
 
 _, output = getstatusoutput(

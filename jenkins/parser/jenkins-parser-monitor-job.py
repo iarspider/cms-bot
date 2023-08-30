@@ -3,10 +3,14 @@
 import json
 import os
 
-webinfo_file = os.path.join(os.environ.get("HOME"), "builds/jenkins-test-parser-monitor/json-web-info.json")
+webinfo_file = os.path.join(
+    os.environ.get("HOME"), "builds/jenkins-test-parser-monitor/json-web-info.json"
+)
 
 try:
-    with open(webinfo_file, "r") as json_file:  # Keeps track of the actions taken by parser job
+    with open(
+        webinfo_file, "r"
+    ) as json_file:  # Keeps track of the actions taken by parser job
         json_object = json.load(json_file)
 except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
     print(f"Error occurred: {str(e)}")
@@ -15,10 +19,14 @@ except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
         json_object = {"parserActions": {}}
         json.dump(json_object, json_file, indent=2)
 
-retryinfo_file = os.path.join(os.environ.get("HOME"), "builds/jenkins-test-parser-monitor/json-retry-info.json")
+retryinfo_file = os.path.join(
+    os.environ.get("HOME"), "builds/jenkins-test-parser-monitor/json-retry-info.json"
+)
 
 try:
-    with open(retryinfo_file, "r") as json_file:  # Keeps track of the links to the retry job
+    with open(
+        retryinfo_file, "r"
+    ) as json_file:  # Keeps track of the links to the retry job
         json_retry_object = json.load(json_file)
 except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
     # Handle file not found error or JSON decoding error

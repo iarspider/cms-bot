@@ -4,7 +4,11 @@ import unittest
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
-from logreaderUtils import transform_and_write_config_file, add_exception_to_config, ResultTypeEnum
+from logreaderUtils import (
+    transform_and_write_config_file,
+    add_exception_to_config,
+    ResultTypeEnum,
+)
 
 unittestlog = """
 ===== Test "Para_" ====
@@ -114,18 +118,29 @@ cmsRun: /data/cmsbld/jenkins_a/workspace/build-any-ib/w/tmp/BUILDROOT/05acf3cc07
 
 
 class TestSequenceFunctions(unittest.TestCase):
-
     def test_unittestlogs(self):
         config_list = []
         custom_rule_set = [
-            {"str_to_match": "test (.*) had ERRORS", "name": "{0}{1}{2} failed", "control_type": ResultTypeEnum.ISSUE},
-            {"str_to_match": '===== Test "([^\s]+)" ====', "name": "{0}", "control_type": ResultTypeEnum.TEST}
+            {
+                "str_to_match": "test (.*) had ERRORS",
+                "name": "{0}{1}{2} failed",
+                "control_type": ResultTypeEnum.ISSUE,
+            },
+            {
+                "str_to_match": '===== Test "([^\s]+)" ====',
+                "name": "{0}",
+                "control_type": ResultTypeEnum.TEST,
+            },
         ]
         for index, l in enumerate(unittestlog.split("\n")):
-            config_list = add_exception_to_config(l, index, config_list, custom_rule_set)
-        transform_and_write_config_file("/tmp/unittestlogs.log-read_config", config_list)
+            config_list = add_exception_to_config(
+                l, index, config_list, custom_rule_set
+            )
+        transform_and_write_config_file(
+            "/tmp/unittestlogs.log-read_config", config_list
+        )
         print("Example config file in %s" % ("/tmp/unittestlogs.log-read_config"))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

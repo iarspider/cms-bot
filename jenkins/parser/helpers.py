@@ -58,7 +58,7 @@ def get_errors_list(jobs_object, job_id):
 
 
 def append_actions(error_keys, jenkins_errors):
-    """ Match error regex with the action to perform."""
+    """Match error regex with the action to perform."""
     # Get the error messages of the error keys
     error_list = []
     # We append the action to perform to the error message
@@ -84,7 +84,8 @@ def get_finished_builds(job_dir, running_builds):
         build
         for build in running_builds
         if grep(
-            functools.reduce(os.path.join, [job_dir, build, "build.xml"]), "<result>",
+            functools.reduce(os.path.join, [job_dir, build, "build.xml"]),
+            "<result>",
         )
     ]
 

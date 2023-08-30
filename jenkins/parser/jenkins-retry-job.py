@@ -44,7 +44,7 @@ print(
 
 
 def findParametersAction(root):
-    """ It finds Jenkins parameters under section ParametersAction in xml file."""
+    """It finds Jenkins parameters under section ParametersAction in xml file."""
     if root.tag == "parameters":
         return root
     for x in root:
@@ -55,7 +55,7 @@ def findParametersAction(root):
 
 
 def getParameters(root, payload):
-    """ Append Jenkins parameters of the form parameter=value (n.text=v.text) elements to a list."""
+    """Append Jenkins parameters of the form parameter=value (n.text=v.text) elements to a list."""
     n = root.find("name")
     if n is not None:
         if n.text is None:

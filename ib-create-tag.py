@@ -59,7 +59,12 @@ if __name__ == "__main__":
         "-H", "--hour", dest="hour", action="store", help="CMSSW IB hour (HH)"
     )
     parser.add_option(
-        "-M", "--minute", dest="minute", action="store", help="CMSSW IB minute (MM)", default="00"
+        "-M",
+        "--minute",
+        dest="minute",
+        action="store",
+        help="CMSSW IB minute (MM)",
+        default="00",
     )
     parser.add_option(
         "-b", "--branch", dest="branch", action="store", help="CMSSW branch"

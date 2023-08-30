@@ -9,6 +9,7 @@ import urllib.error
 
 from github_utils import github_api
 from urllib.error import HTTPError
+
 # noinspection PyUnresolvedReferences
 import libib
 
@@ -16,7 +17,9 @@ import libib
 from libib import PackageInfo, ErrorInfo
 
 try:
-    current_shifter = libib.fetch("/SDT/shifter.txt", content_type=libib.ContentType.TEXT)
+    current_shifter = libib.fetch(
+        "/SDT/shifter.txt", content_type=libib.ContentType.TEXT
+    )
     exit_code = 0
 except (urllib.error.URLError, urllib.error.HTTPError) as e:
     print("WARNING: failed to get current_shifter!")
@@ -148,9 +151,7 @@ def main():
                     ):
                         continue
 
-                    arch_report.append(
-                        f"| [{error.name}]({error.url}) | TBD | "
-                    )
+                    arch_report.append(f"| [{error.name}]({error.url}) | TBD | ")
 
                 for error in new_result[arch]["relval"]:
                     if (
@@ -173,7 +174,10 @@ def main():
 
                 if arch_report:
                     arch_report.insert(
-                        0, table_header.format(rel=rel, ib_date=ib_date.rsplit("-", 1)[0], arch=arch)
+                        0,
+                        table_header.format(
+                            rel=rel, ib_date=ib_date.rsplit("-", 1)[0], arch=arch
+                        ),
                     )
                     if first_report:
                         arch_report.insert(0, header)
@@ -193,7 +197,8 @@ def main():
             print("#!/bin/bash", file=f)
             for i in range(payload_index):
                 print(
-                    f'curl -H "Content-Type: application/json" --data-binary "@report_{i:03d}.json" $MM_WEBHOOK_URL', file=f
+                    f'curl -H "Content-Type: application/json" --data-binary "@report_{i:03d}.json" $MM_WEBHOOK_URL',
+                    file=f,
                 )
                 print(f"rm -f report_{i:03d}.json", file=f)
     else:
