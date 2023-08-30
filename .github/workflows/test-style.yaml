@@ -1,0 +1,41 @@
+name: Lint
+
+on:
+  pull_request:
+    paths:
+      - '**/*.py'
+      - 'cleanup-cmssdt'
+      - 'jenkins-jobs/git/git-mirror-repository'
+      - 'jenkins-jobs/git/git-notify-ib-updates'
+      - 'pr-checks/check-pr-files'
+      - 'cms-jenkins-api'
+      - 'comment-gh-pr'
+      - 'compareTriggerResults'
+      - 'compareTriggerResultsSummary'
+      - 'create-github-hooks'
+      - 'es-cleanup-indexes'
+      - 'es-reindex'
+      - 'forward-pull-requests'
+      - 'get-git-tags'
+      - 'get-pr-branch'
+      - 'github-rate-limits'
+      - 'merge-pull-request'
+      - 'new-release-cycle'
+      - 'process-build-release-request'
+      - 'process-error-reports'
+      - 'process-pull-request'
+      - 'query-and-process-prs'
+      - 'query-new-pull-requests'
+      - 'release-notes'
+      - 'report-cmsdist-pull-request-results'
+      - 'report-summary-merged-prs'
+      - 'scram-package-monitor-sender'
+      - 'scram-package-monitor-timestamps'
+      - 'tag-ib'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: psf/black@stable
