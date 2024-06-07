@@ -216,8 +216,8 @@ def on_labels_changed(added_labels, removed_labels):
 
 
 class TestProcessPr(Framework.TestCase):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.process_pr_module = None
 
     @staticmethod
