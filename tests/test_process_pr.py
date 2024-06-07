@@ -4,15 +4,222 @@ import os
 import sys
 import traceback
 
+import github
 import pytest
 
 from . import Framework
 from .Framework import readLine
 
-from github.PaginatedList import PaginatedList
+actions = []
+
+################################################################################
+# Hook some PyGithub methods to log them
+
+github__issuecomment__edit = github.IssueComment.IssueComment.edit
+
+
+def comment__edit(self, body):
+    actions.append({"type": "edit-comment", "data": body})
+    if dryRun:
+        print("DRY RUN: Updating existing comment with text")
+        print(body.encode("ascii", "ignore").decode())
+    else:
+        return github__issuecomment__edit(self, body)
+
+
+github.IssueComment.IssueComment.edit = comment__edit
+
+################################################################################
+
+github__issuecomment__delete = github.IssueComment.IssueComment.delete
+
+
+def comment__delete(self):
+    actions.append({"type": "delete-comment", "data": str(self)})
+    return github__issuecomment__delete(self)
+
+
+github.IssueComment.IssueComment.delete = comment__delete
+
+################################################################################
+github__issue__create_comment = github.Issue.Issue.create_comment
+
+
+def issue__create_comment(self, body):
+    actions.append({"type": "create-comment", "data": body})
+    if dryRun:
+        print("DRY RUN: Creating comment with text")
+        print(body.encode("ascii", "ignore").decode())
+    else:
+        github__issue__create_comment(self, body)
+
+
+github.Issue.Issue.create_comment = issue__create_comment
+
+################################################################################
+github__issue__edit = github.Issue.Issue.edit
+
+
+def issue__edit(
+    self,
+    title=github.GithubObject.NotSet,
+    body=github.GithubObject.NotSet,
+    assignee=github.GithubObject.NotSet,
+    state=github.GithubObject.NotSet,
+    milestone=github.GithubObject.NotSet,
+    labels=github.GithubObject.NotSet,
+    assignees=github.GithubObject.NotSet,
+):
+
+    if milestone != github.GithubObject.NotSet:
+        actions.append(
+            {"type": "update-milestone", "data": {"id": milestone.id, "title": milestone.title}}
+        )
+
+    # if labels != github.GithubObject.NotSet:
+    #     # FIXME:
+    #     # actions.append()
+    #     pass
+
+    if state == "closed":
+        actions.append({"type": "close", "data": None})
+
+    if state == "open":
+        actions.append({"type": "open", "data": None})
+
+    github__issue__edit(
+        self,
+        title=title,
+        body=body,
+        assignee=assignee,
+        state=state,
+        labels=labels,
+        assignees=assignees,
+    )
+
+
+github.Issue.Issue.edit = issue__edit
+################################################################################
+github__commit__create_status = github.Commit.Commit.create_status
+
+
+def commit__create_status(self, state, target_url=None, description=None, context=None):
+    actions.append(
+        {
+            "type": "status",
+            "data": {
+                "commit": self.sha,
+                "state": state,
+                "target_url": target_url,
+                "description": description,
+                "context": context,
+            },
+        }
+    )
+
+    if target_url is None:
+        target_url = github.GithubObject.NotSet
+
+    if description is None:
+        description = github.GithubObject.NotSet
+
+    if context is None:
+        context = github.GithubObject.NotSet
+
+    if dryRun:
+        print(
+            "DRY RUN: set commit status state={0}, target_url={1}, description={2}, context={3}".format(
+                state, target_url, description, context
+            )
+        )
+    else:
+        github__commit__create_status(
+            self, state, target_url=target_url, description=description, context=context
+        )
+
+
+github.Commit.Commit.create_status = commit__create_status
+
+################################################################################
+# TODO: remove once we update pygithub
+# Taken from: https://github.com/PyGithub/PyGithub/pull/2939/files
+
+
+def get_commit_files(commit):
+    return github.PaginatedList.PaginatedList(
+        github.File.File,
+        commit._requester,
+        commit.url,
+        {},
+        None,
+        "files",
+    )
+
+
+# noinspection PyUnusedLocal
+def get_commit_files_pygithub(repo, commit):
+    return (x.filename for x in get_commit_files(commit))
+
+
+################################################################################
+process_pr__read_bot_cache = None
+
+
+def read_bot_cache(data):
+    res = process_pr__read_bot_cache(data)
+    actions.append({"type": "load-bot-cache", "data": res})
+
+
+################################################################################
+process_pr__create_property_file = None
+
+
+def create_property_file(out_file_name, parameters, dryRun):
+    actions.append(
+        {"type": "create-property-file", "data": {"filename": out_file_name, "data": parameters}}
+    )
+
+    process_pr__create_property_file(out_file_name, parameters, dryRun)
+
+
+################################################################################
+
+process_pr__set_comment_emoji_cache = None
+
+
+def set_comment_emoji_cache(dryRun, bot_cache, comment, repository, emoji="+1", reset_other=True):
+    actions.append({"type": "emoji", "data": (comment.id, emoji, reset_other)})
+    process_pr__set_comment_emoji_cache(
+        dryRun, bot_cache, comment, repository, emoji="+1", reset_other=True
+    )
+
+
+################################################################################
+process_pr__on_labels_changed = None
+
+
+def on_labels_changed(added_labels, removed_labels):
+    actions.append(
+        {
+            "type": "add-label",
+            "data": sorted(
+                list(
+                    added_labels,
+                )
+            ),
+        }
+    )
+    actions.append({"type": "remove-label", "data": sorted(list(removed_labels))})
+
+
+################################################################################
 
 
 class TestProcessPr(Framework.TestCase):
+    def __init__(self):
+        super().__init__()
+        self.process_pr_module = None
+
     @staticmethod
     def compareActions(res_, expected_):
         res = {json.dumps(x, sort_keys=True) for x in res_}
@@ -61,7 +268,9 @@ class TestProcessPr(Framework.TestCase):
             self.__eventFile.close()
 
     def setUp(self):
+        global dryRun, process_pr__read_bot_cache, process_pr__set_comment_emoji_cache, process_pr__on_labels_changed, process_pr__create_property_file
         super().setUp()
+        dryRun = True
 
         self.__eventFileName = ""
         self.__eventFile = None
@@ -88,7 +297,24 @@ class TestProcessPr(Framework.TestCase):
         self.repo_config = sys.modules["repo_config"]
         assert "iarspider_cmssw" in self.repo_config.__file__
 
-        self.process_pr = importlib.import_module("process_pr").process_pr
+        if not self.process_pr_module:
+            self.process_pr_module = importlib.import_module("process_pr")
+            self.process_pr = self.process_pr_module.process_pr
+            # TODO: remove once we update pygithub
+            self.process_pr_module.get_commit_files = get_commit_files_pygithub
+
+            # Replace some methods to log performed actions
+            process_pr__read_bot_cache = self.process_pr_module.read_bot_cache
+            self.process_pr_module.read_bot_cache = read_bot_cache
+
+            process_pr__set_comment_emoji_cache = self.process_pr_module.set_comment_emoji_cache
+            self.process_pr_module.set_comment_emoji_cache = set_comment_emoji_cache
+
+            process_pr__create_property_file = self.process_pr_module.create_property_file
+            self.process_pr.create_property_file = create_property_file
+
+            process_pr__on_labels_changed = self.process_pr_module.on_labels_changed
+            self.process_pr_module.on_labels_changed = on_labels_changed
 
     def runTest(self, prId=17):
         repo = self.g.get_repo("iarspider-cmssw/cmssw")
@@ -131,9 +357,9 @@ class TestProcessPr(Framework.TestCase):
         comparision=True,
     ):
         repo = self.g.get_repo("iarspider-cmssw/cmssw")
-        pr = repo.get_pull(prId)
+        pr = repo.get_pull(self.prId)
         commit = pr.get_commits().reversed[0]
-        prefix = "cms/" + str(prId) + "/"
+        prefix = "cms/" + str(self.prId) + "/"
         if queue.endswith("_X"):
             queue = queue.rstrip("_X")
         prefix += (queue + "/" if queue else "") + arch

@@ -43,6 +43,7 @@ from socket import setdefaulttimeout
 from _py2with3compatibility import run_cmd
 from json import dumps, dump, load, loads
 import yaml
+import sys
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -831,10 +832,25 @@ def add_nonblocking_labels(chg_files, extra_labels):
     return
 
 
+# TODO: remove once we update pygithub
+def get_commit_files(repo_, commit):
+    return (x["filename"] for x in get_commit(repo_.full_name, commit.sha)["files"])
+
+
+def on_labels_changed(added_labels, removed_labels):
+    # Placeholder function replaced during testing
+    pass
+
+
 def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=False):
     global L2_DATA
     if (not force) and ignore_issue(repo_config, repo, issue):
         return
+
+    if "pytest" in sys.modules:
+        test_mode = True
+    else:
+        test_mode = False
     gh_user_char = "@"
     if not notify_user(issue):
         gh_user_char = ""
@@ -1929,7 +1945,10 @@ def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=F
                                 + "/pr-result"
                             )
                             print("PR Result:", url)
-                            e, o = run_cmd("curl -k -s -L --max-time 60 %s" % url)
+                            if test_mode:
+                                e, o = "", "ook"
+                            else:
+                                e, o = run_cmd("curl -k -s -L --max-time 60 %s" % url)
                             if e:
                                 print(o)
                                 raise Exception("System-error: unable to get PR result")
@@ -2101,6 +2120,7 @@ def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=F
         print("Blockers:", blockers)
 
     print("Changed Labels: added", labels - old_labels, "removed", old_labels - labels)
+    on_labels_changed(labels - old_labels, old_labels - labels)
     if old_labels == labels:
         print("Labels unchanged.")
     elif not dryRunOrig:
@@ -2130,7 +2150,7 @@ def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=F
             backport_msg = ""
             if backport_pr_num:
                 backport_msg = "%s%s\n" % (BACKPORT_STR, backport_pr_num)
-            l2s = ", ".join([gh_user_char + name for name in CMSSW_ISSUES_TRACKERS])
+            l2s = ", ".join(gh_user_char + name for name in sorted(CMSSW_ISSUES_TRACKERS))
             issueMessage = format(
                 "%(msgPrefix)s %(gh_user_char)s%(user)s.\n\n"
                 "%(l2s)s can you please review it and eventually sign/assign?"
@@ -2306,28 +2326,33 @@ def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=F
             print("DRY-RUN: not posting comment", messageFullySigned)
 
     unsigned = [commit_sha for (commit_sha, v) in list(signatures.items()) if v == "pending"]
-    missing_notifications = [
-        gh_user_char + name
-        for name, l2_categories in list(CMSSW_L2.items())
-        for signature in signing_categories
-        if signature in l2_categories and signature in unsigned and signature not in ["orp"]
-    ]
+    missing_notifications = sorted(
+        list(
+            set(
+                gh_user_char + name
+                for name, l2_categories in list(CMSSW_L2.items())
+                for signature in signing_categories
+                if signature in l2_categories
+                and signature in unsigned
+                and signature not in ["orp"]
+            )
+        )
+    )
 
-    missing_notifications = set(missing_notifications)
     # Construct message for the watchers
     watchersMsg = ""
     if watchers:
         watchersMsg = format(
             "%(watchers)s this is something you requested to" " watch as well.\n",
-            watchers=", ".join(watchers),
+            watchers=", ".join(sorted(watchers)),
         )
     # Construct message for the release managers.
-    managers = ", ".join([gh_user_char + x for x in releaseManagers])
+    managers = ", ".join([gh_user_char + x for x in sorted(releaseManagers)])
 
     releaseManagersMsg = ""
     if releaseManagers:
         releaseManagersMsg = format(
-            "%(managers)s you are the release manager for this.\n", managers=managers
+            "%(managers)s you are the release manager for this.\n", managers=sorted(managers)
         )
 
     # Add a Warning if the pull request was done against a patch branch
