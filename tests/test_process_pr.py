@@ -306,7 +306,7 @@ class TestProcessPr(Framework.TestCase):
             f = self.__openEventFile("r")
             self.replayData = json.load(f)
 
-        self.processPrData = self.process_pr(
+        self.process_pr(
             self.repo_config,
             self.g,
             repo,
@@ -314,6 +314,7 @@ class TestProcessPr(Framework.TestCase):
             False,
             self.repo_config.CMSBUILD_USER,
         )
+        self.processPrData = actions
         self.checkOrSaveTest()
         self.__closeEventReplayFileIfNeeded()
 
