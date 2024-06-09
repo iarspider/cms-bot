@@ -1644,7 +1644,7 @@ def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=F
                     bot_cache["commits"][commit.sha]["files"] = []
                 else:
                     bot_cache["commits"][commit.sha]["files"] = sorted(
-                        x["filename"] for x in get_commit(repo.full_name, commit.sha)["files"]
+                        get_commit_files(repo, commit)
                     )
 
             elif len(commit.parents) > 1:
