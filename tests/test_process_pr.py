@@ -20,11 +20,8 @@ github__issuecomment__edit = github.IssueComment.IssueComment.edit
 
 def comment__edit(self, body):
     actions.append({"type": "edit-comment", "data": body})
-    if dryRun:
-        print("DRY RUN: Updating existing comment with text")
-        print(body.encode("ascii", "ignore").decode())
-    else:
-        return github__issuecomment__edit(self, body)
+    print("DRY RUN: Updating existing comment with text")
+    print(body.encode("ascii", "ignore").decode())
 
 
 github.IssueComment.IssueComment.edit = comment__edit
@@ -36,7 +33,7 @@ github__issuecomment__delete = github.IssueComment.IssueComment.delete
 
 def comment__delete(self):
     actions.append({"type": "delete-comment", "data": str(self)})
-    return github__issuecomment__delete(self)
+    return
 
 
 github.IssueComment.IssueComment.delete = comment__delete
@@ -47,11 +44,8 @@ github__issue__create_comment = github.Issue.Issue.create_comment
 
 def issue__create_comment(self, body):
     actions.append({"type": "create-comment", "data": body})
-    if dryRun:
-        print("DRY RUN: Creating comment with text")
-        print(body.encode("ascii", "ignore").decode())
-    else:
-        github__issue__create_comment(self, body)
+    print("DRY RUN: Creating comment with text")
+    print(body.encode("ascii", "ignore").decode())
 
 
 github.Issue.Issue.create_comment = issue__create_comment
@@ -60,6 +54,7 @@ github.Issue.Issue.create_comment = issue__create_comment
 github__issue__edit = github.Issue.Issue.edit
 
 
+# noinspection PyUnusedLocal
 def issue__edit(
     self,
     title=github.GithubObject.NotSet,
@@ -76,26 +71,11 @@ def issue__edit(
             {"type": "update-milestone", "data": {"id": milestone.id, "title": milestone.title}}
         )
 
-    # if labels != github.GithubObject.NotSet:
-    #     # FIXME:
-    #     # actions.append()
-    #     pass
-
     if state == "closed":
         actions.append({"type": "close", "data": None})
 
     if state == "open":
         actions.append({"type": "open", "data": None})
-
-    github__issue__edit(
-        self,
-        title=title,
-        body=body,
-        assignee=assignee,
-        state=state,
-        labels=labels,
-        assignees=assignees,
-    )
 
 
 github.Issue.Issue.edit = issue__edit
@@ -125,17 +105,11 @@ def commit__create_status(self, state, target_url=None, description=None, contex
 
     if context is None:
         context = github.GithubObject.NotSet
-
-    if dryRun:
-        print(
-            "DRY RUN: set commit status state={0}, target_url={1}, description={2}, context={3}".format(
-                state, target_url, description, context
-            )
+    print(
+        "DRY RUN: set commit status state={0}, target_url={1}, description={2}, context={3}".format(
+            state, target_url, description, context
         )
-    else:
-        github__commit__create_status(
-            self, state, target_url=target_url, description=description, context=context
-        )
+    )
 
 
 github.Commit.Commit.create_status = commit__create_status
@@ -145,6 +119,7 @@ github.Commit.Commit.create_status = commit__create_status
 # Taken from: https://github.com/PyGithub/PyGithub/pull/2939/files
 
 
+# noinspection PyProtectedMember
 def get_commit_files(commit):
     return github.PaginatedList.PaginatedList(
         github.File.File,
@@ -165,6 +140,7 @@ def get_commit_files_pygithub(repo, commit):
 process_pr__read_bot_cache = None
 
 
+# noinspection PyCallingNonCallable
 def read_bot_cache(data):
     res = process_pr__read_bot_cache(data)
     actions.append({"type": "load-bot-cache", "data": res})
@@ -174,12 +150,13 @@ def read_bot_cache(data):
 process_pr__create_property_file = None
 
 
+# noinspection PyCallingNonCallable
 def create_property_file(out_file_name, parameters, dryRun):
     actions.append(
         {"type": "create-property-file", "data": {"filename": out_file_name, "data": parameters}}
     )
 
-    process_pr__create_property_file(out_file_name, parameters, dryRun)
+    process_pr__create_property_file(out_file_name, parameters, True)
 
 
 ################################################################################
@@ -187,10 +164,11 @@ def create_property_file(out_file_name, parameters, dryRun):
 process_pr__set_comment_emoji_cache = None
 
 
+# noinspection PyCallingNonCallable
 def set_comment_emoji_cache(dryRun, bot_cache, comment, repository, emoji="+1", reset_other=True):
     actions.append({"type": "emoji", "data": (comment.id, emoji, reset_other)})
     process_pr__set_comment_emoji_cache(
-        dryRun, bot_cache, comment, repository, emoji="+1", reset_other=True
+        True, bot_cache, comment, repository, emoji="+1", reset_other=True
     )
 
 
@@ -213,12 +191,11 @@ def on_labels_changed(added_labels, removed_labels):
 
 
 ################################################################################
-
-
 class TestProcessPr(Framework.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.process_pr_module = None
+        self.prId = -1
 
     @staticmethod
     def compareActions(res_, expected_):
@@ -268,9 +245,8 @@ class TestProcessPr(Framework.TestCase):
             self.__eventFile.close()
 
     def setUp(self):
-        global dryRun, process_pr__read_bot_cache, process_pr__set_comment_emoji_cache, process_pr__on_labels_changed, process_pr__create_property_file
+        global process_pr__read_bot_cache, process_pr__set_comment_emoji_cache, process_pr__create_property_file, process_pr__on_labels_changed
         super().setUp()
-        dryRun = True
 
         self.__eventFileName = ""
         self.__eventFile = None
@@ -316,6 +292,9 @@ class TestProcessPr(Framework.TestCase):
             process_pr__on_labels_changed = self.process_pr_module.on_labels_changed
             self.process_pr_module.on_labels_changed = on_labels_changed
 
+            process_pr__set_comment_emoji_cache = self.process_pr_module.set_comment_emoji_cache
+            self.process_pr_module.set_comment_emoji_cache = process_pr__set_comment_emoji_cache
+
     def runTest(self, prId=17):
         repo = self.g.get_repo("iarspider-cmssw/cmssw")
         issue = repo.get_issue(prId)
@@ -332,7 +311,7 @@ class TestProcessPr(Framework.TestCase):
             self.g,
             repo,
             issue,
-            True,
+            False,
             self.repo_config.CMSBUILD_USER,
         )
         self.checkOrSaveTest()
