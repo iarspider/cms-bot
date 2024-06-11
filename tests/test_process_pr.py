@@ -68,7 +68,10 @@ def issue__edit(
 
     if milestone != github.GithubObject.NotSet:
         actions.append(
-            {"type": "update-milestone", "data": {"id": milestone.id, "title": milestone.title}}
+            {
+                "type": "update-milestone",
+                "data": {"id": milestone.number, "title": milestone.title},
+            }
         )
 
     if state == "closed":
@@ -97,14 +100,6 @@ def commit__create_status(self, state, target_url=None, description=None, contex
         }
     )
 
-    if target_url is None:
-        target_url = github.GithubObject.NotSet
-
-    if description is None:
-        description = github.GithubObject.NotSet
-
-    if context is None:
-        context = github.GithubObject.NotSet
     print(
         "DRY RUN: set commit status state={0}, target_url={1}, description={2}, context={3}".format(
             state, target_url, description, context
@@ -144,6 +139,7 @@ process_pr__read_bot_cache = None
 def read_bot_cache(data):
     res = process_pr__read_bot_cache(data)
     actions.append({"type": "load-bot-cache", "data": res})
+    return res
 
 
 ################################################################################
@@ -263,6 +259,7 @@ class TestProcessPr(Framework.TestCase):
         sys.path.insert(0, repo_config_dir)
 
         if "repo_config" in sys.modules:
+            print("Reloading repo_config...")
             importlib.reload(sys.modules["repo_config"])
             importlib.reload(sys.modules["milestones"])
             importlib.reload(sys.modules["releases"])
@@ -287,7 +284,7 @@ class TestProcessPr(Framework.TestCase):
             self.process_pr_module.set_comment_emoji_cache = set_comment_emoji_cache
 
             process_pr__create_property_file = self.process_pr_module.create_property_file
-            self.process_pr.create_property_file = create_property_file
+            self.process_pr_module.create_property_file = create_property_file
 
             process_pr__on_labels_changed = self.process_pr_module.on_labels_changed
             self.process_pr_module.on_labels_changed = on_labels_changed

@@ -2352,7 +2352,7 @@ def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=F
     releaseManagersMsg = ""
     if releaseManagers:
         releaseManagersMsg = format(
-            "%(managers)s you are the release manager for this.\n", managers=sorted(managers)
+            "%(managers)s you are the release manager for this.\n", managers=managers
         )
 
     # Add a Warning if the pull request was done against a patch branch
