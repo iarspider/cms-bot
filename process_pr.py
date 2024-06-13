@@ -1,3 +1,5 @@
+import copy
+
 from categories import (
     CMSSW_L2,
     CMSSW_L1,
@@ -43,7 +45,7 @@ from socket import setdefaulttimeout
 from _py2with3compatibility import run_cmd
 from json import dumps, dump, load, loads
 import yaml
-import sys
+import sys  # to test if we are doing tests or are in production mode
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -238,7 +240,7 @@ def read_bot_cache(data):
     res = loads_maybe_decompress(data)
     for k, v in BOT_CACHE_TEMPLATE.items():
         if k not in res:
-            res[k] = v
+            res[k] = copy.deepcopy(v)
     collect_commit_cache(res)
     return res
 
@@ -440,6 +442,19 @@ def modify_comment(comment, match, replace, dryRun):
     return 0
 
 
+# github_utils.set_issue_emoji -> https://github.com/PyGithub/PyGithub/blob/v1.56/github/Issue.py#L569
+# github_utils.set_comment_emoji -> https://github.com/PyGithub/PyGithub/blob/v1.56/github/IssueComment.py#L149
+# github_utils.delete_issue_emoji, github_utils.delete_comment_emoji -> https://github.com/PyGithub/PyGithub/blob/v1.56/github/Reaction.py#L71
+def set_emoji(comment, emoji, reset_other):
+    if reset_other:
+        for e in comment.get_reactions():
+            login = e.user.login.encode("ascii", "ignore").decode()
+            if login == GH_USER and e.content != emoji:
+                e.delete()
+
+    comment.create_reaction(emoji)
+
+
 def set_comment_emoji_cache(dryRun, bot_cache, comment, repository, emoji="+1", reset_other=True):
     if dryRun:
         return
@@ -449,10 +464,8 @@ def set_comment_emoji_cache(dryRun, bot_cache, comment, repository, emoji="+1", 
         or (bot_cache["emoji"][comment_id] != emoji)
         or (comment.reactions[emoji] == 0)
     ):
-        if "Issue.Issue" in str(type(comment)):
-            set_issue_emoji(comment.number, repository, emoji=emoji, reset_other=reset_other)
-        else:
-            set_comment_emoji(comment.id, repository, emoji=emoji, reset_other=reset_other)
+
+        set_emoji(comment, emoji, reset_other)
         bot_cache["emoji"][comment_id] = emoji
     return
 
@@ -463,11 +476,9 @@ def has_user_emoji(bot_cache, comment, repository, emoji, user):
     if (comment_id in bot_cache["emoji"]) and (comment.reactions[emoji] > 0):
         e = bot_cache["emoji"][comment_id]
     else:
-        emojis = None
-        if "Issue.Issue" in str(type(comment)):
-            emojis = get_issue_emojis(comment.number, repository)
-        else:
-            emojis = get_comment_emojis(comment.id, repository)
+        # github_utils.get_issue_emojis -> https://github.com/PyGithub/PyGithub/blob/v1.56/github/Issue.py#L556
+        # github_utils.get_comment_emojis -> https://github.com/PyGithub/PyGithub/blob/v1.56/github/IssueComment.py#L135
+        emojis = comment.get_reactions()
         for x in emojis:
             if x["user"]["login"].encode("ascii", "ignore").decode() == user:
                 e = x["content"]
@@ -847,10 +858,8 @@ def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=F
     if (not force) and ignore_issue(repo_config, repo, issue):
         return
 
-    if "pytest" in sys.modules:
-        test_mode = True
-    else:
-        test_mode = False
+    test_mode = "pytest" in sys.modules
+
     gh_user_char = "@"
     if not notify_user(issue):
         gh_user_char = ""
@@ -1187,7 +1196,7 @@ def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=F
     # Make sure bot cache has the needed keys
     for k, v in BOT_CACHE_TEMPLATE.items():
         if k not in bot_cache:
-            bot_cache[k] = v
+            bot_cache[k] = copy.deepcopy(v)
 
     for comment in all_comments:
         ack_comment = comment
@@ -1547,7 +1556,9 @@ def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=F
                         "{2}, to re-enable processing of this PR, you can write `+commit-count` in a comment. Thanks.".format(
                             pr.commits,
                             TOO_MANY_COMMITS_WARN_THRESHOLD,
-                            ", ".join([gh_user_char + name for name in CMSSW_ISSUES_TRACKERS]),
+                            ", ".join(
+                                sorted([gh_user_char + name for name in CMSSW_ISSUES_TRACKERS])
+                            ),
                         )
                     )
             else:
