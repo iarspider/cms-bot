@@ -39,7 +39,7 @@ from github_utils import (
     get_pr_commits_reversed,
     get_commit,
 )
-from github_utils import set_gh_user, GH_USER
+from github_utils import set_gh_user, get_gh_user
 from socket import setdefaulttimeout
 from _py2with3compatibility import run_cmd
 from json import dumps, dump, load, loads
@@ -447,7 +447,7 @@ def set_emoji(comment, emoji, reset_other):
     if reset_other:
         for e in comment.get_reactions():
             login = e.user.login.encode("ascii", "ignore").decode()
-            if login == GH_USER and e.content != emoji:
+            if login == get_gh_user() and e.content != emoji:
                 e.delete()
 
     comment.create_reaction(emoji)
