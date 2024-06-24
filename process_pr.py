@@ -39,8 +39,7 @@ from github_utils import (
     get_pr_commits_reversed,
     get_commit,
 )
-from github_utils import set_comment_emoji, get_comment_emojis, set_gh_user
-from github_utils import set_issue_emoji, get_issue_emojis
+from github_utils import set_gh_user, GH_USER
 from socket import setdefaulttimeout
 from _py2with3compatibility import run_cmd
 from json import dumps, dump, load, loads
