@@ -39,7 +39,7 @@ from github_utils import (
     get_pr_commits_reversed,
     get_commit,
 )
-from github_utils import set_gh_user, get_gh_user
+from github_utils import set_gh_user, get_gh_user, delete_issue_emoji, delete_comment_emoji
 from socket import setdefaulttimeout
 from _py2with3compatibility import run_cmd
 from json import dumps, dump, load, loads
@@ -442,13 +442,20 @@ def modify_comment(comment, match, replace, dryRun):
 
 # github_utils.set_issue_emoji -> https://github.com/PyGithub/PyGithub/blob/v1.56/github/Issue.py#L569
 # github_utils.set_comment_emoji -> https://github.com/PyGithub/PyGithub/blob/v1.56/github/IssueComment.py#L149
-# github_utils.delete_issue_emoji, github_utils.delete_comment_emoji -> https://github.com/PyGithub/PyGithub/blob/v1.56/github/Reaction.py#L71
-def set_emoji(comment, emoji, reset_other):
+# github_utils.delete_issue_emoji -> https://github.com/PyGithub/PyGithub/blob/v1.56/github/Issue.py#L587
+# github_utils.delete_comment_emoji -> https://github.com/PyGithub/PyGithub/blob/v1.56/github/IssueComment.py#L168
+def set_emoji(repository, comment, emoji, reset_other):
     if reset_other:
         for e in comment.get_reactions():
             login = e.user.login.encode("ascii", "ignore").decode()
             if login == get_gh_user() and e.content != emoji:
-                e.delete()
+                if hasattr(comment, delete_reaction):
+                    comment.delete_reaction(e.id)
+                else:
+                    if isinstance(comment, github.Issue.Issue):
+                        delete_issue_emoji(e.id, comment.id, repository)
+                    else:
+                        delete_comment_emoji(e.id, comment.id, repository)
 
     comment.create_reaction(emoji)
 
@@ -462,8 +469,7 @@ def set_comment_emoji_cache(dryRun, bot_cache, comment, repository, emoji="+1", 
         or (bot_cache["emoji"][comment_id] != emoji)
         or (comment.reactions[emoji] == 0)
     ):
-
-        set_emoji(comment, emoji, reset_other)
+        set_emoji(repository, comment, emoji, reset_other)
         bot_cache["emoji"][comment_id] = emoji
     return
 
