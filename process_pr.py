@@ -39,7 +39,7 @@ from github_utils import (
     get_pr_commits_reversed,
     get_commit,
 )
-from github_utils import set_gh_user, get_gh_user, delete_issue_emoji, delete_comment_emoji
+from github_utils import set_gh_user, get_gh_user
 from socket import setdefaulttimeout
 from _py2with3compatibility import run_cmd
 from json import dumps, dump, load, loads
@@ -449,13 +449,7 @@ def set_emoji(repository, comment, emoji, reset_other):
         for e in comment.get_reactions():
             login = e.user.login.encode("ascii", "ignore").decode()
             if login == get_gh_user() and e.content != emoji:
-                if hasattr(comment, delete_reaction):
-                    comment.delete_reaction(e.id)
-                else:
-                    if isinstance(comment, github.Issue.Issue):
-                        delete_issue_emoji(e.id, comment.id, repository)
-                    else:
-                        delete_comment_emoji(e.id, comment.id, repository)
+                comment.delete_reaction(e.id)
 
     comment.create_reaction(emoji)
 
