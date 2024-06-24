@@ -45,7 +45,6 @@ from socket import setdefaulttimeout
 from _py2with3compatibility import run_cmd
 from json import dumps, dump, load, loads
 import yaml
-import sys  # to test if we are doing tests or are in production mode
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -853,12 +852,15 @@ def on_labels_changed(added_labels, removed_labels):
     pass
 
 
+def fetch_pr_result(url):
+    e, o = run_cmd("curl -k -s -L --max-time 60 %s" % url)
+    return e, o
+
+
 def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=False):
     global L2_DATA
     if (not force) and ignore_issue(repo_config, repo, issue):
         return
-
-    test_mode = "pytest" in sys.modules
 
     gh_user_char = "@"
     if not notify_user(issue):
@@ -1956,10 +1958,7 @@ def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=F
                                 + "/pr-result"
                             )
                             print("PR Result:", url)
-                            if test_mode:
-                                e, o = "", "ook"
-                            else:
-                                e, o = run_cmd("curl -k -s -L --max-time 60 %s" % url)
+                            e, o = fetch_pr_result(result_url)
                             if e:
                                 print(o)
                                 raise Exception("System-error: unable to get PR result")

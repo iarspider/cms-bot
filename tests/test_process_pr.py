@@ -231,6 +231,13 @@ def on_labels_changed(*args, **kwargs):
     actions.append({"type": "remove-label", "data": sorted(list(removed_labels))})
 
 
+def dummy_fetch_pr_result(*args, **kwargs):
+    assert len(args) == 1, "Signature of process_pr.fetch_pr_result changed"
+    assert len(kwargs) == 0, "Signature of process_pr.fetch_pr_result changed"
+
+    return "", "ook"
+
+
 class TestProcessPr(Framework.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -338,6 +345,13 @@ class TestProcessPr(Framework.TestCase):
                 "class_name": None,
                 "function_name": "on_labels_changed",
                 "hook_function": on_labels_changed,
+                "call_original": False,
+            },
+            {
+                "module_path": "process_pr",
+                "class_name": None,
+                "function_name": "fetch_pr_result",
+                "hook_function": dummy_fetch_pr_result,
                 "call_original": False,
             },
             # TODO: remove once we update PyGithub
