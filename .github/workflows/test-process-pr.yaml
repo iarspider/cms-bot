@@ -4,6 +4,7 @@ on:
   push:
     paths:
     - process_pr.py
+    - .github/workflows/test-process-pr.yaml
 
 jobs:
   build:
@@ -16,7 +17,16 @@ jobs:
       - uses: MathRobin/timezone-action@v1.1
         with:
           timezoneLinux: 'Europe/Paris'
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: PyGithub/PyGithub
+          ref: v1.56
+          path: tmp
+          sparse-checkout: tests/Framework.py
+          sparse-checkout-cone-mode: false
+      - run: mv tmp/tests/Framework.py tests/
+      - run: sed -i -e 's/pool_size=self.pool_size/per_page=100/g' tests/Framework.py
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
