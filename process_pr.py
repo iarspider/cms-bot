@@ -1957,7 +1957,7 @@ def process_pr(repo_config, gh, repo, issue, dryRun, cmsbuild_user=None, force=F
                                 + "/pr-result"
                             )
                             print("PR Result:", url)
-                            e, o = fetch_pr_result(result_url)
+                            e, o = fetch_pr_result(url)
                             if e:
                                 print(o)
                                 raise Exception("System-error: unable to get PR result")
